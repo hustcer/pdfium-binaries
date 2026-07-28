@@ -29,6 +29,9 @@ mkdir -p "$BUILD"
 
   if [ "$BUILD_TYPE" == "static" ]; then
     echo "pdf_is_complete_lib = true"
+    # Object-level debug info dominates static archive size (mac: ~277 MB vs
+    # ~25 MB code-only) and is discarded when consumers link the archive.
+    echo "symbol_level = 0"
 
     if [ "$OS" == "mac" ] || [ "$OS" == "linux" ]; then
       echo "use_custom_libcxx = false"
