@@ -41,11 +41,11 @@ mkdir -p "$BUILD"
       echo "use_custom_libcxx_for_host = false"
     fi
 
-    # MoonBit native executables use GNU ld on Linux. Build every released
-    # Linux archive with the same linker contract; LLD-produced x64 objects
-    # are rejected by GNU ld when section GC and stripping are enabled.
+    # Keep Chromium's LLD for its hermetic sysroot links, but disable CREL in
+    # released Linux archives because the GNU linker used by MoonBit native
+    # does not understand that experimental relocation format.
     if [ "$OS" == "linux" ]; then
-      echo "use_lld = false"
+      echo "pdfium_use_crel = false"
     fi
   fi
 
@@ -64,6 +64,12 @@ mkdir -p "$BUILD"
       ;;
     linux)
       echo "clang_use_chrome_plugins = false"
+      # The MIPS build patch has always disabled CREL for older toolchains,
+      # including shared builds. Preserve that behavior through the explicit
+      # downstream build argument introduced by patches/linux/build.patch.
+      if [ "$BUILD_TYPE" != "static" ] && { [ "$TARGET_CPU" == "mipsel" ] || [ "$TARGET_CPU" == "mips64el" ]; }; then
+        echo "pdfium_use_crel = false"
+      fi
       # AOTW, //build/config/sysroot.gni lacks handling of ppc64, so we manually set the sysroot to ensure working builds with proper glibc requirement
       if [ "$TARGET_CPU" == "ppc64" ]; then
         echo "use_sysroot = true"

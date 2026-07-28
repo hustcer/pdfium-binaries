@@ -1,0 +1,23 @@
+diff --git a/config/compiler/BUILD.gn b/config/compiler/BUILD.gn
+--- a/config/compiler/BUILD.gn
++++ b/config/compiler/BUILD.gn
+@@ -52,5 +52,9 @@ declare_args() {
+   # This allows overriding the location of lld.
+   lld_path = default_lld_path
++
++  # Distributable static archives may need conventional REL/RELA relocations
++  # so they remain consumable by non-LLVM linkers.
++  pdfium_use_crel = true
+ }
+ 
+ declare_args() {
+@@ -662,7 +666,8 @@ config("compiler") {
+     # TODO(crbug.com/376278218): This causes segfault on Linux ARM builds.
+     # It also causes segfault on Linux s390x:
+     # https://github.com/llvm/llvm-project/issues/149511
+-    if (is_linux && use_lld && current_cpu != "arm" && current_cpu != "s390x") {
++    if (is_linux && use_lld && pdfium_use_crel && current_cpu != "arm" &&
++        current_cpu != "s390x") {
+       cflags += [ "-Wa,--crel,--allow-experimental-crel" ]
+     }
+   }

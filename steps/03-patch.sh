@@ -45,6 +45,9 @@ case "$OS" in
     ;;
 
   linux)
+    if [ "$BUILD_TYPE" == "static" ] || [ "$TARGET_CPU" == "mipsel" ] || [ "$TARGET_CPU" == "mips64el" ]; then
+      apply_patch "$PATCHES/linux/build.patch" build
+    fi
     [ "$ENABLE_V8" == "true" ] && apply_patch "$PATCHES/linux/v8.patch" v8
     ;;
 
