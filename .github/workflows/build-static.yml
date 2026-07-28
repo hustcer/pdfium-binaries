@@ -1,0 +1,177 @@
+name: Build static
+
+# Builds pdfium-<os>[-<environment>]-<cpu>-static.tgz archives
+# (pdf_is_complete_lib=true; system libc++ on mac/linux) for as many
+# targets as practical, and optionally publishes them as a GitHub
+# release tagged `<branch>-static`.
+
+permissions:
+  contents: read
+  actions: write # to upload artifacts
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: PDFium branch (e.g. chromium/7947)
+        required: false
+        default: main
+      version:
+        description: PDFium version (e.g. 152.0.7947.0)
+        required: false
+        default: ""
+      targets:
+        description: Target set
+        type: choice
+        default: desktop
+        options:
+          - core # mac/linux/win, x64 + arm64 only
+          - desktop # core + linux arm/x86 + musl + win x86
+          - all # desktop + android + ios + linux mips/ppc64
+      release:
+        description: Publish GitHub release (<branch>-static)
+        type: boolean
+        required: false
+        default: false
+
+jobs:
+  matrix:
+    name: Resolve target matrix
+    runs-on: ubuntu-24.04
+    outputs:
+      targets: ${{ steps.resolve.outputs.targets }}
+    env:
+      TARGET_SET: ${{ github.event.inputs.targets }}
+    steps:
+      - name: Resolve
+        id: resolve
+        shell: bash
+        run: |
+          cat >core.json <<'END'
+          [
+            { "target_os": "mac", "target_cpu": "arm64" },
+            { "target_os": "mac", "target_cpu": "x64" },
+            { "target_os": "linux", "target_cpu": "x64" },
+            { "target_os": "linux", "target_cpu": "arm64" },
+            { "target_os": "win", "target_cpu": "x64" },
+            { "target_os": "win", "target_cpu": "arm64" }
+          ]
+          END
+          cat >desktop.json <<'END'
+          [
+            { "target_os": "linux", "target_cpu": "arm" },
+            { "target_os": "linux", "target_cpu": "x86" },
+            { "target_os": "linux", "target_cpu": "x64", "target_environment": "musl" },
+            { "target_os": "linux", "target_cpu": "arm64", "target_environment": "musl" },
+            { "target_os": "linux", "target_cpu": "x86", "target_environment": "musl" },
+            { "target_os": "win", "target_cpu": "x86" }
+          ]
+          END
+          cat >extra.json <<'END'
+          [
+            { "target_os": "linux", "target_cpu": "mipsel" },
+            { "target_os": "linux", "target_cpu": "mips64el" },
+            { "target_os": "linux", "target_cpu": "ppc64" },
+            { "target_os": "android", "target_cpu": "arm" },
+            { "target_os": "android", "target_cpu": "arm64" },
+            { "target_os": "android", "target_cpu": "x64" },
+            { "target_os": "android", "target_cpu": "x86" },
+            { "target_os": "ios", "target_cpu": "arm64", "target_environment": "device" },
+            { "target_os": "ios", "target_cpu": "arm64", "target_environment": "simulator" },
+            { "target_os": "ios", "target_cpu": "x64", "target_environment": "simulator" },
+            { "target_os": "ios", "target_cpu": "arm64", "target_environment": "catalyst" },
+            { "target_os": "ios", "target_cpu": "x64", "target_environment": "catalyst" }
+          ]
+          END
+          case "$TARGET_SET" in
+            core) jq -c . core.json ;;
+            all) jq -cs 'add' core.json desktop.json extra.json ;;
+            *) jq -cs 'add' core.json desktop.json ;;
+          esac | sed 's/^/targets=/' >>"$GITHUB_OUTPUT"
+
+  build:
+    name: Static ${{ matrix.target_os }}${{ matrix.target_environment && '-' || '' }}${{ matrix.target_environment }}-${{ matrix.target_cpu }}
+    needs: matrix
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.matrix.outputs.targets) }}
+    uses: ./.github/workflows/build.yml
+    secrets: inherit
+    with:
+      branch: ${{ github.event.inputs.branch }}
+      version: ${{ github.event.inputs.version }}
+      target_os: ${{ matrix.target_os }}
+      target_cpu: ${{ matrix.target_cpu }}
+      target_environment: ${{ matrix.target_environment || '' }}
+      build_type: static
+
+  publish:
+    name: Pack & publish
+    needs: build
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write # to create releases
+      id-token: write # to attest build provenance
+      attestations: write # to attest build provenance
+    env:
+      DO_RELEASE: ${{ github.event.inputs.release == 'true' && startsWith(github.event.inputs.branch, 'chromium/') && github.event.inputs.version != '' }}
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v7
+        with:
+          pattern: pdfium-*-static
+      - name: Create tarballs
+        run: |
+          shopt -s nullglob
+          DIRS=(pdfium-*-static)
+          if [ ${#DIRS[@]} -eq 0 ]; then
+            echo "No static artifacts were produced by the build jobs" >&2
+            exit 1
+          fi
+          for DIR in "${DIRS[@]}"; do
+            echo "::group::$DIR"
+            (cd "$DIR"; tar czf "../$DIR.tgz" -- *)
+            echo "::endgroup::"
+          done
+      - name: Generate checksums
+        run: sha256sum pdfium-*-static.tgz | tee SHA256SUMS-static.txt
+      - name: Upload tarball bundle
+        uses: actions/upload-artifact@v6
+        with:
+          name: static-tarballs
+          path: |
+            pdfium-*-static.tgz
+            SHA256SUMS-static.txt
+      - name: Write release body
+        if: env.DO_RELEASE == 'true'
+        run: |
+          cat <<END >RELEASE.md
+          Static-library builds (\`pdf_is_complete_lib = true\`; system libc++ on mac/linux) of PDFium branch \`$BRANCH\`.
+
+          ### Archives
+          $(for TGZ in pdfium-*-static.tgz; do echo "* \`$TGZ\`"; done)
+          END
+        env:
+          BRANCH: ${{ github.event.inputs.branch }}
+      - name: Attest build provenance
+        if: env.DO_RELEASE == 'true'
+        id: provenance
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-path: pdfium-*-static.tgz
+      - name: Rename provenance file
+        if: env.DO_RELEASE == 'true'
+        run: mv "${{ steps.provenance.outputs.bundle-path }}" pdfium-static-attestation.json
+      - name: Publish Release
+        if: env.DO_RELEASE == 'true'
+        uses: ncipollo/release-action@v1
+        with:
+          allowUpdates: true
+          replacesArtifacts: true
+          bodyFile: RELEASE.md
+          token: ${{ secrets.GITHUB_TOKEN }}
+          name: PDFium ${{ github.event.inputs.version }} (static)
+          tag: ${{ github.event.inputs.branch }}-static
+          artifacts: pdfium-*-static.tgz, SHA256SUMS-static.txt, pdfium-static-attestation.json
