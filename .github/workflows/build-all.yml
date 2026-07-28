@@ -633,7 +633,7 @@ jobs:
       - win_x86_v8
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Download artifacts
         uses: actions/download-artifact@v7
         with:
@@ -687,7 +687,7 @@ jobs:
       - win_x64
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Download artifacts
         uses: actions/download-artifact@v7
       - name: Create build script

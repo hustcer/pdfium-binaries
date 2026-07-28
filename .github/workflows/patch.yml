@@ -67,7 +67,7 @@ jobs:
             cpu: wasm
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Download PDFium artifact
         uses: actions/download-artifact@v7

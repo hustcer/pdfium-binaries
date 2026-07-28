@@ -85,7 +85,7 @@ jobs:
           [ "${{inputs.is_debug}}" == "true" ] && ARTIFACT="$ARTIFACT-debug"
           echo "artifact=$ARTIFACT" >> $GITHUB_OUTPUT
       - name: Checkout this repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Set environment variables
         run: steps/00-environment.sh
         shell: bash
