@@ -30,9 +30,13 @@ mkdir -p "$BUILD"
   if [ "$BUILD_TYPE" == "static" ]; then
     echo "pdf_is_complete_lib = true"
 
+    if [ "$OS" == "mac" ] || [ "$OS" == "linux" ]; then
+      echo "use_custom_libcxx = false"
+      echo "use_custom_libcxx_for_host = false"
+    fi
+
     if [ "$OS-$TARGET_CPU" == "linux-arm64" ]; then
       echo "use_lld = false"
-      echo "use_custom_libcxx = false"
     fi
   fi
 
