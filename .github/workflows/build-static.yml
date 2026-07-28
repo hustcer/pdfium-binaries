@@ -13,17 +13,17 @@ on:
   workflow_dispatch:
     inputs:
       branch:
-        description: PDFium branch (e.g. chromium/7947)
+        description: PDFium branch (e.g. chromium/7961)
         required: false
         default: main
       version:
-        description: PDFium version (e.g. 152.0.7947.0)
+        description: PDFium version (e.g. 152.0.7961.0)
         required: false
         default: ""
       targets:
         description: Target set
         type: choice
-        default: desktop
+        default: core
         options:
           - core # mac/linux/win, x64 + arm64 only
           - desktop # core + linux arm/x86 + musl + win x86
@@ -119,7 +119,7 @@ jobs:
       DO_RELEASE: ${{ github.event.inputs.release == 'true' && startsWith(github.event.inputs.branch, 'chromium/') && github.event.inputs.version != '' }}
     steps:
       - name: Download artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           pattern: pdfium-*-static
       - name: Create tarballs
@@ -138,7 +138,7 @@ jobs:
       - name: Generate checksums
         run: sha256sum pdfium-*-static.tgz | tee SHA256SUMS-static.txt
       - name: Upload tarball bundle
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: static-tarballs
           path: |
@@ -158,7 +158,7 @@ jobs:
       - name: Attest build provenance
         if: env.DO_RELEASE == 'true'
         id: provenance
-        uses: actions/attest-build-provenance@v3
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: pdfium-*-static.tgz
       - name: Rename provenance file
@@ -173,5 +173,5 @@ jobs:
           bodyFile: RELEASE.md
           token: ${{ secrets.GITHUB_TOKEN }}
           name: PDFium ${{ github.event.inputs.version }} (static)
-          tag: ${{ github.event.inputs.branch }}-static
+          tag: ${{ github.event.inputs.version }}-static
           artifacts: pdfium-*-static.tgz, SHA256SUMS-static.txt, pdfium-static-attestation.json
