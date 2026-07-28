@@ -46,6 +46,11 @@ on:
         type: string
         required: false
         default: shared
+      require_test:
+        description: Fail the build when the consumer smoke test fails
+        type: boolean
+        required: false
+        default: false
     outputs:
       artifact:
         description: "The name of the artifact"
@@ -130,6 +135,6 @@ jobs:
       - name: Test
         run: steps/09-test.sh
         shell: bash
-        # The cmake example is not yet validated for every static target;
-        # keep the artifact usable even when the smoke test lags behind.
-        continue-on-error: ${{ inputs.build_type == 'static' }}
+        # Core static release targets are strict; broader cross targets may
+        # continue while their consumer smoke coverage is being completed.
+        continue-on-error: ${{ inputs.build_type == 'static' && !inputs.require_test }}

@@ -33,12 +33,18 @@ mkdir -p "$BUILD"
     # ~25 MB code-only) and is discarded when consumers link the archive.
     echo "symbol_level = 0"
 
-    if [ "$OS" == "mac" ] || [ "$OS" == "linux" ]; then
+    # Released desktop archives must use the consumer platform's C++ ABI.
+    # Chromium's private libc++ exposes std::__Cr symbols that downstream
+    # system linkers cannot resolve, including MSVC consumers on Windows.
+    if [ "$OS" == "mac" ] || [ "$OS" == "linux" ] || [ "$OS" == "win" ]; then
       echo "use_custom_libcxx = false"
       echo "use_custom_libcxx_for_host = false"
     fi
 
-    if [ "$OS-$TARGET_CPU" == "linux-arm64" ]; then
+    # MoonBit native executables use GNU ld on Linux. Build every released
+    # Linux archive with the same linker contract; LLD-produced x64 objects
+    # are rejected by GNU ld when section GC and stripping are enabled.
+    if [ "$OS" == "linux" ]; then
       echo "use_lld = false"
     fi
   fi

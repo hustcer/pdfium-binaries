@@ -1,9 +1,9 @@
 name: Build static
 
 # Builds pdfium-<os>[-<environment>]-<cpu>-static.tgz archives
-# (pdf_is_complete_lib=true; system libc++ on mac/linux) for as many
-# targets as practical, and optionally publishes them as a GitHub
-# release tagged `<branch>-static`.
+# (pdf_is_complete_lib=true; system C++ ABI on desktop targets; GNU-linker-
+# compatible Linux objects) for as many targets as practical, and optionally
+# publishes them as a GitHub release tagged `<branch>-static`.
 
 permissions:
   contents: read
@@ -49,12 +49,12 @@ jobs:
         run: |
           cat >core.json <<'END'
           [
-            { "target_os": "mac", "target_cpu": "arm64" },
-            { "target_os": "mac", "target_cpu": "x64" },
-            { "target_os": "linux", "target_cpu": "x64" },
-            { "target_os": "linux", "target_cpu": "arm64" },
-            { "target_os": "win", "target_cpu": "x64" },
-            { "target_os": "win", "target_cpu": "arm64" }
+            { "target_os": "mac", "target_cpu": "arm64", "require_test": true },
+            { "target_os": "mac", "target_cpu": "x64", "require_test": true },
+            { "target_os": "linux", "target_cpu": "x64", "require_test": true },
+            { "target_os": "linux", "target_cpu": "arm64", "require_test": true },
+            { "target_os": "win", "target_cpu": "x64", "require_test": true },
+            { "target_os": "win", "target_cpu": "arm64", "require_test": true }
           ]
           END
           cat >desktop.json <<'END'
@@ -105,11 +105,12 @@ jobs:
       target_cpu: ${{ matrix.target_cpu }}
       target_environment: ${{ matrix.target_environment || '' }}
       build_type: static
+      require_test: ${{ matrix.require_test || false }}
 
   publish:
     name: Pack & publish
     needs: build
-    if: ${{ !cancelled() }}
+    if: ${{ needs.build.result == 'success' }}
     runs-on: ubuntu-24.04
     permissions:
       contents: write # to create releases
@@ -148,7 +149,7 @@ jobs:
         if: env.DO_RELEASE == 'true'
         run: |
           cat <<END >RELEASE.md
-          Static-library builds (\`pdf_is_complete_lib = true\`; system libc++ on mac/linux) of PDFium branch \`$BRANCH\`.
+          Static-library builds (\`pdf_is_complete_lib = true\`; system C++ ABI on desktop targets; GNU-linker-compatible Linux objects) of PDFium branch \`$BRANCH\`.
 
           ### Archives
           $(for TGZ in pdfium-*-static.tgz; do echo "* \`$TGZ\`"; done)

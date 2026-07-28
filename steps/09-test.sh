@@ -3,6 +3,7 @@
 OS=${PDFium_TARGET_OS:?}
 CPU="${PDFium_TARGET_CPU:?}"
 TARGET_ENVIRONMENT="${PDFium_TARGET_ENVIRONMENT:-}"
+BUILD_TYPE=${PDFium_BUILD_TYPE:-shared}
 SOURCE_DIR="$PWD/example"
 CMAKE_ARGS=()
 CAN_RUN_ON_HOST=false
@@ -118,6 +119,13 @@ case "$OS" in
       -D CMAKE_C_COMPILER="${PREFIX:-}gcc${SUFFIX:-}"
       -D CMAKE_CXX_COMPILER="${PREFIX:-}g++${SUFFIX:-}"
     )
+    if [ "$BUILD_TYPE" == "static" ]; then
+      # Match the release xdoc link path so GNU ld incompatibilities in a
+      # supposedly portable static archive fail in the producer workflow.
+      CMAKE_ARGS+=(
+        -D 'CMAKE_EXE_LINKER_FLAGS=-Wl,--gc-sections -Wl,--strip-all'
+      )
+    fi
     ;;
 
   mac)
