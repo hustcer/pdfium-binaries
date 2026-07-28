@@ -67,7 +67,7 @@ case "$OS-$BUILD_TYPE" in
     [ "$IS_DEBUG" == "true" ] && mv "$BUILD/pdfium.dll.pdb" "$STAGING_BIN"
     ;;
 
-  win-shared)
+  win-static)
     mv "$BUILD/obj/pdfium.lib" "$STAGING_LIB"
     ;;
 esac
