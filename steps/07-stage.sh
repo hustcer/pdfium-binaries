@@ -80,3 +80,9 @@ BUILD=$(echo "$VERSION" | cut -d. -f3)
 PATCH=$(echo "$VERSION" | cut -d. -f4)
 END
 fi
+
+# Record the exact PDFium commit the archive was built from so consumers can
+# verify provenance beyond the release tag and VERSION metadata.
+if PDFIUM_COMMIT=$(git -C "$SOURCE" rev-parse HEAD 2>/dev/null); then
+  echo "$PDFIUM_COMMIT" >"$STAGING/COMMIT"
+fi
