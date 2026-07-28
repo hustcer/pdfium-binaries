@@ -5,6 +5,12 @@ on:
     - cron:  '0 4 * * 1'
   workflow_dispatch:
 
+# The default GITHUB_TOKEN of this repository is read-only; dispatching the
+# Build static workflow through the API requires an explicit actions grant.
+permissions:
+  contents: read
+  actions: write
+
 jobs:
   trigger:
     name: Trigger build
