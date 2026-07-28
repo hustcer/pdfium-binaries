@@ -56,15 +56,13 @@ else()
   if(APPLE)
     find_library(PDFium_CORE_FOUNDATION CoreFoundation)
     find_library(PDFium_CORE_GRAPHICS CoreGraphics)
-    find_package(ZLIB REQUIRED)
     set_property(TARGET pdfium APPEND PROPERTY INTERFACE_LINK_LIBRARIES
-      "${PDFium_CORE_FOUNDATION};${PDFium_CORE_GRAPHICS};ZLIB::ZLIB")
-  elseif(UNIX)
-    find_package(Threads REQUIRED)
-    find_package(ZLIB REQUIRED)
-    set_property(TARGET pdfium APPEND PROPERTY INTERFACE_LINK_LIBRARIES
-      "Threads::Threads;ZLIB::ZLIB;${CMAKE_DL_LIBS};m")
+      "${PDFium_CORE_FOUNDATION};${PDFium_CORE_GRAPHICS}")
   endif()
+
+  # The complete archive already carries its non-system dependencies. Avoid
+  # host-side find_package() calls here: they cannot resolve target libraries
+  # when this package is smoke-tested through a cross compiler.
 
   find_package_handle_standard_args(PDFium
     REQUIRED_VARS PDFium_LIBRARY PDFium_INCLUDE_DIR
