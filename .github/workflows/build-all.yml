@@ -635,7 +635,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
       - name: Download artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           path: nuget
       - name: Prepare header files
@@ -663,7 +663,7 @@ jobs:
             echo "::endgroup::"
           done
       - name: Upload artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: NuGet packages
           path: '*.nupkg'
@@ -689,7 +689,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
       - name: Download artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
       - name: Create build script
         run: |
           cat >conda-build.sh <<END
@@ -724,7 +724,7 @@ jobs:
       - name: Build for win-arm64
         run: ./conda-build.sh win-arm64 pdfium-win-arm64
       - name: Upload artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: Conda packages
           path: conda/out/
@@ -797,7 +797,7 @@ jobs:
       attestations: write # to attest build provenance
     steps:
       - name: Download artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
       - name: Create tarballs
         run: |
           for DIR in pdfium-*; do
@@ -827,7 +827,7 @@ jobs:
         run: echo "hashes=$(sha256sum pdfium-*.tgz | base64 -w0)" >> "$GITHUB_OUTPUT"
       - name: Attest build provenance
         id: provenance
-        uses: actions/attest-build-provenance@v3
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: pdfium-*.tgz
       - name: Rename provenance file
